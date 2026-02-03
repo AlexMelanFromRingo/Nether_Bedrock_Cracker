@@ -301,7 +301,8 @@ mod tests {
 
         search_bedrock_pattern_with_list(&blocks,1,&seedlist,BedrockGeneration::Normal, sender);
 
-        if let Ok(CrackProgress::Seed(seed)) = receiver.recv() {
+        if let Ok(CrackProgress::Seed(found_seed)) = receiver.recv() {
+            assert_eq!(found_seed, 765906787396911863, "Found seed should match expected");
         } else {
             panic!("No seed found");
         }

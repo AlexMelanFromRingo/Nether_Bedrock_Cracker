@@ -52,7 +52,7 @@ impl Application for State {
         }
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         self.bedrock_menu.view().map(Message::ControlMessage)
     }
 

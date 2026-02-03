@@ -11,12 +11,15 @@ use iced::{futures, Element, Length, Padding, Subscription, subscription, Comman
 use bedrock_cracker::{CrackProgress, estimate_result_amount, search_bedrock_pattern, search_bedrock_pattern_with_list};
 use bedrock_cracker::raw_data::block::Block as BlockInfo;
 
-use iced::widget::{button, Column, column, pick_list, row, Scrollable, text, tooltip};
+use iced::widget::{button, checkbox, Column, column, pick_list, row, Scrollable, text, tooltip};
 use iced::widget::tooltip::Position;
 use rfd::AsyncFileDialog;
 use tokio::sync::mpsc::channel;
 use bedrock_cracker::raw_data::block_type::BlockType;
 use bedrock_cracker::raw_data::modes::{BedrockGeneration, OutputMode};
+
+#[cfg(feature = "gpu")]
+use bedrock_cracker::gpu::{is_gpu_available, search_bedrock_pattern_gpu, GpuSearchConfig};
 
 #[derive(Debug, Default)]
 pub struct BdrkTab {
@@ -26,6 +29,10 @@ pub struct BdrkTab {
     mode: BedrockGeneration,
     output_mode: OutputMode,
     seed_list: Arc<Vec<u64>>,
+    #[cfg(feature = "gpu")]
+    use_gpu: bool,
+    #[cfg(feature = "gpu")]
+    gpu_available: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -34,7 +41,9 @@ pub enum BdrkMessage {
     CrackerMode(BedrockGeneration),
     OutputMode(OutputMode),
     LoadSeedList,
-    LoadedSeedList(Option<String>)
+    LoadedSeedList(Option<String>),
+    #[cfg(feature = "gpu")]
+    ToggleGpu(bool),
 }
 
 impl From<TabMessage> for BdrkMessage {
@@ -49,13 +58,20 @@ impl ApplicationTab for BdrkTab {
     type Message = BdrkMessage;
 
     fn new() -> Self {
+        #[cfg(feature = "gpu")]
+        let gpu_available = is_gpu_available();
+
         Self {
             estimated_seeds: (1 << 48),
             blocks: vec![Block::new()],
             valid_blocks: Vec::new(),
             mode: BedrockGeneration::Normal,
             output_mode: OutputMode::WorldSeed,
-            seed_list: Arc::new(Vec::new())
+            seed_list: Arc::new(Vec::new()),
+            #[cfg(feature = "gpu")]
+            use_gpu: gpu_available,
+            #[cfg(feature = "gpu")]
+            gpu_available,
         }
     }
 
@@ -115,11 +131,15 @@ impl ApplicationTab for BdrkTab {
                     self.seed_list = Arc::new(Vec::new());
                 }
             }
+            #[cfg(feature = "gpu")]
+            BdrkMessage::ToggleGpu(enabled) => {
+                self.use_gpu = enabled && self.gpu_available;
+            }
         }
         Command::none()
     }
 
-    fn view(&self) -> Element<TabMessage> {
+    fn view(&self) -> Element<'_, TabMessage> {
         let estimate = text(format!(
             "Naively estimated results: {} seeds",
             self.estimated_seeds
@@ -147,7 +167,18 @@ impl ApplicationTab for BdrkTab {
             )
         };
 
-        let top_bar = row![estimate, crack_mode, output_mode, seed_list_button];
+        #[cfg(feature = "gpu")]
+        let gpu_checkbox: Element<_> = {
+            let label = if self.gpu_available { "GPU" } else { "GPU (N/A)" };
+            checkbox(label, self.use_gpu)
+                .on_toggle_maybe(if self.gpu_available { Some(BdrkMessage::ToggleGpu) } else { None })
+                .into()
+        };
+
+        #[cfg(not(feature = "gpu"))]
+        let gpu_checkbox: Element<_> = text("").into();
+
+        let top_bar = row![estimate, crack_mode, output_mode, seed_list_button, gpu_checkbox].spacing(10);
         let coords: Element<_> = column(
             self.blocks
                 .iter()
@@ -172,7 +203,12 @@ impl ApplicationTab for BdrkTab {
             CrackerState::Starting(file_output) => {
                 let threads = threads.parse::<u64>().unwrap_or(1);
 
-                crack(&self.valid_blocks, &self.seed_list, file_output, threads, self.mode, self.output_mode)
+                #[cfg(feature = "gpu")]
+                let use_gpu = self.use_gpu;
+                #[cfg(not(feature = "gpu"))]
+                let use_gpu = false;
+
+                crack(&self.valid_blocks, &self.seed_list, file_output, threads, self.mode, self.output_mode, use_gpu)
             }
             CrackerState::Running => subscription::run_with_id(
                 std::any::TypeId::of::<Unique>(),
@@ -245,6 +281,7 @@ pub fn crack(
     threads: u64,
     mode: BedrockGeneration,
     output_mode: OutputMode,
+    use_gpu: bool,
 ) -> Subscription<CrackerEvent> {
     let file_output = file_output.clone();
     let blocks: Vec<_> = blocks.clone();
@@ -265,7 +302,23 @@ pub fn crack(
             let (sender, mut receiver) = channel(100);
 
             if seed_list.is_empty() {
-                spawn_blocking(move || search_bedrock_pattern(&blocks, threads, mode, output_mode, sender));
+                #[cfg(feature = "gpu")]
+                if use_gpu {
+                    let config = GpuSearchConfig::default();
+                    spawn_blocking(move || {
+                        if let Err(e) = search_bedrock_pattern_gpu(&blocks, config, mode, output_mode, sender) {
+                            eprintln!("GPU search failed: {}", e);
+                        }
+                    });
+                } else {
+                    spawn_blocking(move || search_bedrock_pattern(&blocks, threads, mode, output_mode, sender));
+                }
+
+                #[cfg(not(feature = "gpu"))]
+                {
+                    let _ = use_gpu; // suppress warning
+                    spawn_blocking(move || search_bedrock_pattern(&blocks, threads, mode, output_mode, sender));
+                }
             } else {
                 spawn_blocking(move || search_bedrock_pattern_with_list(&blocks, threads, &seed_list, mode, sender));
             }

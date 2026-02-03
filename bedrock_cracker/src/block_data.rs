@@ -137,6 +137,24 @@ impl CheckObject {
             & MASK48)
             < self.condition
     }
+
+    /// Get the position hash value (for GPU compatibility)
+    #[cfg(feature = "gpu")]
+    pub fn pos_hash(&self) -> u64 {
+        self.pos_hash
+    }
+
+    /// Get the condition value (for GPU compatibility)
+    #[cfg(feature = "gpu")]
+    pub fn condition(&self) -> u64 {
+        self.condition
+    }
+
+    /// Get the offset value (for GPU compatibility)
+    #[cfg(feature = "gpu")]
+    pub fn offset(&self) -> u64 {
+        self.offset
+    }
 }
 
 

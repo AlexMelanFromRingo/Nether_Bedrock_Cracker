@@ -4,9 +4,12 @@ version = "0.2.5"
 edition = "2021"
 
 [features]
+default = []
 tokio = ["dep:tokio"]
+gpu = ["dep:opencl3"]
 
 [dependencies]
 next_long_reverser = "0.1.0"
 java_random = "0.1.7"
 tokio = { version = "1.38", optional = true }
+opencl3 = { version = "0.12", optional = true }

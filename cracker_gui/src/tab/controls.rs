@@ -44,7 +44,7 @@ where
         }
     }
 
-    pub fn view(&self) -> Element<ControlMessage> {
+    pub fn view(&self) -> Element<'_, ControlMessage> {
         // coords
         let coord_list = self.tab.view().map(ControlMessage::TabMessage);
 
@@ -172,7 +172,7 @@ where
         Command::none()
     }
 
-    fn view_control_panel(&self) -> Element<ControlMessage> {
+    fn view_control_panel(&self) -> Element<'_, ControlMessage> {
         let mut row = Row::new();
         if self.cracking == CrackerState::Idle {
             row = row.push(
@@ -323,7 +323,7 @@ pub trait ApplicationTab {
 
     fn update(&mut self, message: Self::Message) -> Command<TabMessage>;
 
-    fn view(&self) -> Element<TabMessage>;
+    fn view(&self) -> Element<'_, TabMessage>;
 
     fn poll_cracker(&self, state: &CrackerState, threads: &str) -> Subscription<CrackerEvent>;
 }
