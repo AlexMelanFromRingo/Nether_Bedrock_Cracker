@@ -15,11 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: hecrj/setup-rust-action@v1
-      - name: Install cargo-deb
-        run: cargo install cargo-deb
+      - name: Install OpenCL development files
+        run: sudo apt-get update && sudo apt-get install -y ocl-icd-opencl-dev
       - uses: actions/checkout@master
-      - name: Build cracker_gui binary
-        run: cargo build --verbose --profile release-opt --package cracker_gui
+      - name: Build cracker_gui binary (with GPU support)
+        run: cargo build --verbose --profile release-opt --package cracker_gui --features gpu
       - name: Rename
         run: mv target/release-opt/cracker_gui bedrock_cracker-x86_64-unknown-linux-gnu
       - name: Archive cracker_gui binary
@@ -41,8 +41,8 @@ jobs:
       - name: Run the application without starting the shell
         run: |
           sed -i '1 i\#![windows_subsystem = \"windows\"]' cracker_gui/src/main.rs
-      - name: Build cracker_gui binary
-        run: cargo build --verbose --profile release-opt --package cracker_gui
+      - name: Build cracker_gui binary (with GPU support)
+        run: cargo build --verbose --profile release-opt --package cracker_gui --features gpu
       - name: Rename
         run: mv target/release-opt/cracker_gui.exe cracker_gui-x86_64-pc-windows-msvc.exe
       - name: Archive cracker_gui binary
@@ -56,10 +56,10 @@ jobs:
     steps:
       - uses: hecrj/setup-rust-action@v1
       - uses: actions/checkout@master
-      - name: Build cracker_gui binary
+      - name: Build cracker_gui binary (with GPU support)
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.14
-        run: cargo build --verbose --profile release-opt --package cracker_gui
+        run: cargo build --verbose --profile release-opt --package cracker_gui --features gpu
       - name: Open binary via double-click
         run: chmod +x target/release-opt/cracker_gui
       - name: Rename

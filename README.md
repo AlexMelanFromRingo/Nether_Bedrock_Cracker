@@ -1,7 +1,15 @@
 # Nether Bedrock Cracker
 
 Cracks nether seeds from bedrock. This works in versions 1.18 and above since bedrock became seed dependent in that release. The overworld uses a different RNG, so the calculations used here are not applicable.
+
 ![example screenshot of the app](examples/example.png)
+
+## Features
+
+- **CPU Mode**: Multi-threaded search using all available cores
+- **GPU Mode**: OpenCL-accelerated search (up to 10x faster on supported hardware)
+- Seed list filtering support
+- Paper server compatibility mode
 
 ## Usage
 
@@ -17,6 +25,20 @@ After gathering the required data, you have two options:
 
 1. Run the cracker and view the cracked seeds in the graphical user interface (GUI).
 2. Run the cracker and save the found seeds to a file.
+
+### GPU Acceleration
+
+If you have an OpenCL-compatible GPU, you can enable GPU acceleration:
+
+1. Toggle "Use GPU" in the interface
+2. Select your GPU device from the dropdown
+3. Click "Crack" to start
+
+**Requirements:**
+- OpenCL 1.2+ compatible GPU (NVIDIA, AMD, or Intel)
+- Installed GPU drivers with OpenCL support
+
+GPU mode significantly speeds up the search by filtering candidates on the GPU and finalizing results on the CPU.
 
 ### Advanced
 
@@ -47,6 +69,13 @@ You will need to install Microsoft Visual C++.
 MSVC is bundled with Visual Studio, but if you prefer a standalone installation, you can download it from:
 https://visualstudio.microsoft.com/visual-cpp-build-tools/
 
+#### GPU Support (Optional)
+For GPU acceleration, you need OpenCL development files:
+
+- **Windows**: Install GPU drivers (NVIDIA/AMD/Intel) - OpenCL is usually included
+- **Linux**: `sudo apt install ocl-icd-opencl-dev` (Ubuntu/Debian) or equivalent
+- **macOS**: OpenCL is included in the system
+
 ### Building
 
 1. Install [Rust](https://www.rust-lang.org/tools/install).
@@ -54,5 +83,26 @@ https://visualstudio.microsoft.com/visual-cpp-build-tools/
     - Click the green button above to download the repository as a zip.
     - Unzip the downloaded file on your computer. Advanced users may prefer cloning the repository instead.
 3. Open a terminal in the unzipped directory.
-4. Run the command `cargo build --release`.
-5. The executable should now be located at `/target/release/bedrock_cracker`.
+4. Build the application:
+
+**Without GPU support (smaller binary):**
+```bash
+cargo build --release
+```
+
+**With GPU support:**
+```bash
+cargo build --release --features gpu
+```
+
+5. The executable should now be located at `target/release/cracker_gui`.
+
+### Feature Flags
+
+| Feature | Description |
+|---------|-------------|
+| `gpu`   | Enable OpenCL GPU acceleration |
+
+## Algorithm
+
+For details on how the cracking algorithm works, see [ALGORITHM.md](ALGORITHM.md).
